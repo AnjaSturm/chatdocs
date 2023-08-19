@@ -28,8 +28,10 @@
     } else {
       answer.innerText = res.result;
       for (const { source, content } of res.sources) {
+        const sourcematch = source.match(/^(.*)\/([^\/]*)$/);
+
         const summary = el('summary');
-        summary.innerText = source;
+        summary.innerHTML = sourcematch[2] + ' (<a href="documents/' + sourcematch[2] + '" target="_blank">View source</a>)';
 
         const details = el('details');
         details.innerText = content;

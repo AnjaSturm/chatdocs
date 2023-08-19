@@ -7,6 +7,8 @@ from langchain.llms.base import LLM
 
 from .utils import merge
 
+from .getLlm import from_model_id
+
 
 def get_gptq_llm(config: Dict[str, Any]) -> LLM:
     try:
@@ -77,5 +79,7 @@ def get_llm(
         config = {**config["huggingface"]}
         config["model_id"] = config.pop("model")
         config = merge(config, {"model_kwargs": {"local_files_only": local_files_only}})
-        llm = HuggingFacePipeline.from_model_id(task="text-generation", **config)
+        #llm = HuggingFacePipeline.from_model_id(task="text-generation", **config)
+        pipeline = from_model_id(**config)
+        llm = HuggingFacePipeline(pipeline=pipeline)
     return llm

@@ -1,0 +1,9 @@
+llm: huggingface
+huggingface:
+  model: meta-llama/Llama-2-7b-chat-hf
+#  device: 0
+  model_kwargs:
+    use_auth_token: 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
+embeddings:
+  model_kwargs:
+    device: cuda

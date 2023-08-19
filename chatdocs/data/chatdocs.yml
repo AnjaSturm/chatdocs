@@ -1,7 +1,14 @@
 embeddings:
   model: hkunlp/instructor-large
+  # model: sentence-transformers/all-MiniLM-L6-v2
+  # model_kwargs:
+  #   use_auth_token: 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
+  #   device: cuda
+  # encode_kwargs:
+  #   batch_size: 32
+  #   device: 0
 
-llm: ctransformers
+llm: huggingface
 
 ctransformers:
   model: TheBloke/Wizard-Vicuna-7B-Uncensored-GGML
@@ -11,9 +18,21 @@ ctransformers:
     context_length: 1024
 
 huggingface:
-  model: TheBloke/Wizard-Vicuna-7B-Uncensored-HF
+  model: meta-llama/Llama-2-13b-chat-hf
+  # device: 0
+  model_kwargs:
+    use_auth_token: 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
+    #device_map: auto
+    #load_in_4bit: true
+    #load_in_8bit: false
+    #quantization_config:
+      #load_in_8bit: true
+      #load_in_4bit: true
+      #bnb_4bit_quant_type: "nf4"
+     # bnb_4bit_use_double_quant: true
+      #bnb_4bit_compute_dtype: bfloat16
   pipeline_kwargs:
-    max_new_tokens: 256
+    max_new_tokens: 512
 
 gptq:
   model: TheBloke/Wizard-Vicuna-7B-Uncensored-GPTQ
