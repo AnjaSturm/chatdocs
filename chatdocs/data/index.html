@@ -1,17 +1,17 @@
 <title>ChatDocs</title>
 
 <script>
-  const auth = new URLSearchParams(window.location.search).get('auth');
+  const auth = new URLSearchParams(window.location.search).get("auth");
   const ws = new WebSocket(`ws://${location.host}/ws`);
 
-  ws.addEventListener('message', (event) => {
+  ws.addEventListener("message", (event) => {
     data = JSON.parse(event.data);
     onReceive(data);
   });
 
   const send = (req) => {
     if (auth) {
-      req['auth'] = auth;
+      req["auth"] = auth;
     }
     req = JSON.stringify(req);
     ws.send(req);
@@ -21,19 +21,24 @@
 
   const onReceive = (res) => {
     const { id } = res;
-    const answer = document.getElementById('answer-' + id);
-    const sources = document.getElementById('sources-' + id);
+    const answer = document.getElementById("answer-" + id);
+    const sources = document.getElementById("sources-" + id);
     if (res.chunk) {
       answer.innerText += res.chunk;
     } else {
       answer.innerText = res.result;
       for (const { source, content } of res.sources) {
-        const sourcematch = source.match(/^(.*)\/([^\/]*)$/);
+        const sourceName = source.match(/^(.*)\/([^\/]*)$/)[2];
+        const documentName = sourceName.match(/^(.*)\.([^\.]*)$/)[1];
 
-        const summary = el('summary');
-        summary.innerHTML = sourcematch[2] + ' (<a href="documents/' + sourcematch[2] + '" target="_blank">View source</a>)';
+        const summary = el("summary");
+        summary.innerHTML =
+          documentName +
+          ' (<a href="documents/' +
+          documentName +
+          '" target="_blank" style="color: coral">View source</a>)';
 
-        const details = el('details');
+        const details = el("details");
         details.innerText = content;
         details.appendChild(summary);
 
@@ -43,41 +48,41 @@
       form.elements.submit.disabled = false;
       form.elements.query.disabled = false;
     }
-    document.getElementById('end').scrollIntoView();
+    document.getElementById("end").scrollIntoView();
   };
 
   function onSubmit(event) {
     event.preventDefault();
     event.target.elements.submit.disabled = true;
-    const query = new FormData(event.target).get('query');
+    const query = new FormData(event.target).get("query");
     event.target.elements.query.disabled = true;
-    event.target.elements.query.value = 'Processing your query. Please wait...';
-    const id = 'mid-' + performance.now();
-    const messages = document.getElementById('messages');
+    event.target.elements.query.value = "Processing your query. Please wait...";
+    const id = "mid-" + performance.now();
+    const messages = document.getElementById("messages");
 
-    const me = el('div');
-    me.classList.add('message', 'message-me');
+    const me = el("div");
+    me.classList.add("message", "message-me");
     messages.appendChild(me);
 
-    const q = el('div');
+    const q = el("div");
     q.innerText = query;
     me.appendChild(q);
 
-    const ai = el('div');
-    ai.classList.add('message', 'message-ai');
+    const ai = el("div");
+    ai.classList.add("message", "message-ai");
     messages.appendChild(ai);
 
-    const answer = el('div');
-    answer.classList.add('answer');
-    answer.setAttribute('id', 'answer-' + id);
+    const answer = el("div");
+    answer.classList.add("answer");
+    answer.setAttribute("id", "answer-" + id);
     ai.appendChild(answer);
 
-    const sources = el('div');
-    sources.classList.add('sources');
-    sources.setAttribute('id', 'sources-' + id);
+    const sources = el("div");
+    sources.classList.add("sources");
+    sources.setAttribute("id", "sources-" + id);
     ai.appendChild(sources);
 
-    document.getElementById('end').scrollIntoView();
+    document.getElementById("end").scrollIntoView();
 
     send({ id, query });
   }
@@ -220,6 +225,6 @@
 </footer>
 
 <script>
-  const form = document.getElementById('form');
-  form.addEventListener('submit', onSubmit);
+  const form = document.getElementById("form");
+  form.addEventListener("submit", onSubmit);
 </script>
