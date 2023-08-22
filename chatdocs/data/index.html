@@ -34,7 +34,7 @@
         const summary = el("summary");
         summary.innerHTML =
           documentName +
-          ' (<a href="documents/' +
+          ' (<a href="' window.location.protocol + '//' + window.location.hostname + '/documents/' +
           documentName +
           '" target="_blank" style="color: coral">View source</a>)';
 
