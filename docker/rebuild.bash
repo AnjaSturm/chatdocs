@@ -4,9 +4,10 @@
 docker compose down
 
 # cleanup
-docker rm `sudo docker ps -a | awk '/^[0-9a-f]/ {print $1}'`
-docker rmi `sudo docker images | awk '/<none>/ {print $3}'`
-docker volume prune -f
+docker image prune -f
+docker container prune -f
+docker volume prune -a -f
+docker builder prune -a -f
 
 # build
 docker compose build --no-cache --pull
