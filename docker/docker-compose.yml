@@ -12,6 +12,7 @@ services:
               count: 1
               capabilities: [gpu]
     restart: always
+#    network_mode: host
     volumes:
       - ./data/cache/torch:/root/.cache/torch
       - ./data/cache/huggingface:/root/.cache/huggingface
