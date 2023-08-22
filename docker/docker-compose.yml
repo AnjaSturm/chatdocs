@@ -3,6 +3,7 @@ version: '3.2'
 services:
   chatdocs:
     image: chatdocs
+    build: ./chatdocs
     deploy:
       resources:
         reservations:
@@ -22,6 +23,7 @@ services:
 
   lighttpd:
     image: lighttpd
+    build: ./lighttpd
     restart: always
     ports:
       - "80:80"
