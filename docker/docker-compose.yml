@@ -1,0 +1,30 @@
+version: '3.2'
+
+services:
+  chatdocs:
+    image: chatdocs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: always
+    volumes:
+      - ./data/cache/torch:/root/.cache/torch
+      - ./data/cache/huggingface:/root/.cache/huggingface
+      - ./data/documents:/usr/src/app/documents
+      - ./data/db:/usr/src/app/db
+      - ./data/control:/usr/src/app/control
+    ports:
+      - "5000:5000"
+
+  lighttpd:
+    image: lighttpd
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./data/documents:/var/www/html/documents
+      - ./data/log/lighttpd:/var/log/lighttpd
