@@ -18,7 +18,8 @@ ctransformers:
     context_length: 1024
 
 huggingface:
-  model: meta-llama/Llama-2-13b-chat-hf
+  # model: meta-llama/Llama-2-13b-chat-hf
+  model: jphme/Llama-2-13b-chat-german
   # device: 0
   model_kwargs:
     use_auth_token: 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
@@ -26,11 +27,11 @@ huggingface:
     #load_in_4bit: true
     #load_in_8bit: false
     #quantization_config:
-      #load_in_8bit: true
-      #load_in_4bit: true
-      #bnb_4bit_quant_type: "nf4"
-     # bnb_4bit_use_double_quant: true
-      #bnb_4bit_compute_dtype: bfloat16
+    #load_in_8bit: true
+    #load_in_4bit: true
+    #bnb_4bit_quant_type: "nf4"
+    # bnb_4bit_use_double_quant: true
+    #bnb_4bit_compute_dtype: bfloat16
   pipeline_kwargs:
     max_new_tokens: 512
 
