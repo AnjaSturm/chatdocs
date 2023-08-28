@@ -18,9 +18,9 @@ ctransformers:
     context_length: 1024
 
 huggingface:
-  model: meta-llama/Llama-2-7b-chat-hf
+  # model: meta-llama/Llama-2-7b-chat-hf
   # model: meta-llama/Llama-2-13b-chat-hf
-  # model: jphme/Llama-2-13b-chat-german
+  model: jphme/Llama-2-13b-chat-german
   # device: 0
   model_kwargs:
     use_auth_token: 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
