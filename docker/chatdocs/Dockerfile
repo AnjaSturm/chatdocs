@@ -7,30 +7,32 @@ WORKDIR /usr/src/app
 RUN apt-get update && apt-get -y dist-upgrade
 RUN apt-get install unzip
 
-RUN pip install --no-cache-dir "chromadb>=0.3.0,<0.4.0"
-RUN pip install --no-cache-dir "ctransformers>=0.2.12,<0.3.0"
-RUN pip install --no-cache-dir "deepmerge>=1.1.0,<2.0.0"
-RUN pip install --no-cache-dir "InstructorEmbedding>=1.0.1,<2.0.0"
-RUN pip install --no-cache-dir "langchain>=0.0.181"
-RUN pip install --no-cache-dir "pyyaml>=6.0"
-RUN pip install --no-cache-dir "quart>=0.18.3,<0.19.0"
-RUN pip install --no-cache-dir "sentence-transformers>=2.2.2,<3.0.0"
-RUN pip install --no-cache-dir "tqdm>=4.64.1,<5.0.0"
-RUN pip install --no-cache-dir "typer>=0.9.0"
-RUN pip install --no-cache-dir "typing-extensions>=4.4.0,<5.0.0"
-RUN pip install --no-cache-dir "extract-msg>=0.41.0,<0.42.0"
-RUN pip install --no-cache-dir "pandoc>=2.3,<3.0.0"
-RUN pip install --no-cache-dir "pypandoc>=1.11,<2.0.0"
-RUN pip install --no-cache-dir "pdfminer.six==20221105"
-RUN pip install --no-cache-dir "unstructured>=0.6.0,<0.7.0"
-RUN pip install --no-cache-dir "argilla==1.8.0"
+RUN pip install --timeout=900 --no-cache-dir \
+	"chromadb>=0.3.0,<0.4.0" \
+	"ctransformers>=0.2.12,<0.3.0" \
+	"deepmerge>=1.1.0,<2.0.0"\
+        "InstructorEmbedding>=1.0.1,<2.0.0"\
+        "langchain>=0.0.181"\
+        "pyyaml>=6.0"\
+        "quart>=0.18.3,<0.19.0"\
+        "sentence-transformers>=2.2.2,<3.0.0"\
+        "tqdm>=4.64.1,<5.0.0"\
+        "typer>=0.9.0"\
+        "typing-extensions>=4.4.0,<5.0.0"\
+        "extract-msg>=0.41.0,<0.42.0"\
+        "pandoc>=2.3,<3.0.0"\
+        "pypandoc>=1.11,<2.0.0"\
+        "pdfminer.six==20221105"\
+        "unstructured>=0.6.0,<0.7.0"\
+        "argilla==1.8.0"
 
-RUN pip install -U --no-cache-dir "transformers==4.31.0"
-RUN pip install -U --no-cache-dir "accelerate==0.21.0"
-RUN pip install -U --no-cache-dir "einops==0.6.1"
-RUN pip install -U --no-cache-dir "langchain==0.0.240"
-RUN pip install -U --no-cache-dir "xformers==0.0.20"
-RUN pip install -U --no-cache-dir "bitsandbytes==0.41.0"
+RUN pip install --timeout=900 -U --no-cache-dir \
+	"transformers==4.31.0" \
+	"accelerate==0.21.0" \
+	"einops==0.6.1" \
+	"langchain==0.0.240" \
+	"xformers==0.0.20" \
+	"bitsandbytes==0.41.0"
 
 RUN wget -O quantization.zip https://github.com/AnjaSturm/chatdocs/archive/refs/heads/quantization.zip && unzip quantization.zip && mv chatdocs-quantization/chatdocs chatdocs && rm -rf quantization.zip chatdocs-quantization
 
