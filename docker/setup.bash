@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# check for AUTHTOKEN
+if [[ -z "${AUTHTOKEN}" ]]; then
+  echo "Please set the variable 'AUTHTOKEN' to your access token and use 'sudo -E' to call this script"
+  exit
+fi
+
 # create data directories
 mkdir -p data/cache data/control data/db data/documents data/log
 

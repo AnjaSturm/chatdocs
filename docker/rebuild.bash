@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ -z "${AUTHTOKEN}" ]]; then
+  echo "Please set the variable 'AUTHTOKEN' to your access token and use 'sudo -E' to call this script"
+  exit
+fi
+
 # stop
 ./stop.bash
 
