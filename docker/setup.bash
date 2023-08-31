@@ -7,7 +7,8 @@ if [[ -z "${AUTHTOKEN}" ]]; then
 fi
 
 # create data directories
-mkdir -p data/cache data/control data/db data/documents data/log
+mkdir -p data/cache data/control data/db data/documents data/log/lighttpd
+chown www-data:www-data data/log/lighttpd
 
 # cleanup
 docker image prune -f
