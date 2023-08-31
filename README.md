@@ -1,3 +1,14 @@
+# Docker
+
+1. Required: Nvidia GPU. Follow [this link](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) to use with docker
+2. add `export AUTHTOKEN=here_your_huggingface_token` to bashrc (`cat ~/.bashrc`)
+3. log out and in again
+4. in _chatdocs/docker_ run `sudo -E ./setup.bash`
+5. add your data in _chatdocs/docker/data/documents_
+6. run `sudo ./start.bash`
+7. check status with `sudo docker ps -a`
+8. should be running at \*:5000
+
 # [ChatDocs](https://github.com/marella/chatdocs) [![PyPI](https://img.shields.io/pypi/v/chatdocs)](https://pypi.org/project/chatdocs/) [![tests](https://github.com/marella/chatdocs/actions/workflows/tests.yml/badge.svg)](https://github.com/marella/chatdocs/actions/workflows/tests.yml)
 
 Chat with your documents offline using AI. No data leaves your system. Internet connection is only required to install the tool and download the AI models. It is based on [PrivateGPT](https://github.com/imartinez/privateGPT) but has more features.
