@@ -36,7 +36,10 @@ RUN pip install --timeout=900 -U --no-cache-dir \
 
 RUN wget -O quantization.zip https://github.com/AnjaSturm/chatdocs/archive/refs/heads/quantization.zip && unzip quantization.zip && mv chatdocs-quantization/chatdocs chatdocs && rm -rf quantization.zip chatdocs-quantization
 
+ARG auth_token
+
 ENV PYTHONPATH=/usr/src/app
+ENV AUTHTOKEN=$auth_token
 EXPOSE 5000
 VOLUME ["/root/.cache/torch", "/root/.cache/huggingface", "/usr/src/app/documents", "/usr/src/app/db", "/usr/src/app/control"]
 

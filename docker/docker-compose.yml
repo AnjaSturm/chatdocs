@@ -3,7 +3,10 @@ version: '3.2'
 services:
   chatdocs:
     image: chatdocs
-    build: ./chatdocs
+    build:
+      context: ./chatdocs
+      args:
+        auth_token: ${AUTHTOKEN}
     deploy:
       resources:
         reservations:
@@ -20,8 +23,6 @@ services:
       - ./data/control:/usr/src/app/control
     ports:
       - "5000:5000"
-    environment:
-      - AUTHTOKEN
 
   lighttpd:
     image: lighttpd
