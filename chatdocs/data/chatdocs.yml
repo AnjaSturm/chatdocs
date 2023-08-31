@@ -2,7 +2,7 @@ embeddings:
   model: hkunlp/instructor-large
   # model: sentence-transformers/all-MiniLM-L6-v2
   # model_kwargs:
-  #   use_auth_token: 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
+  #   use_auth_token: ${AUTHTOKEN}
   #   device: cuda
   # encode_kwargs:
   #   batch_size: 32
@@ -23,7 +23,7 @@ huggingface:
   model: jphme/Llama-2-13b-chat-german
   # device: 0
   model_kwargs:
-    use_auth_token: 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
+    use_auth_token: ${AUTHTOKEN}
     #device_map: auto
     #load_in_4bit: true
     #load_in_8bit: false

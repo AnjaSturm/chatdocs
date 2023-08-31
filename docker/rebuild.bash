@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # stop
-docker compose down
+./stop.bash
 
 # cleanup
 docker image prune -f
@@ -13,4 +13,4 @@ docker builder prune -a -f
 docker compose build --no-cache --pull
 
 # start
-docker compose up -d
+./start.bash
