@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # create data directories
-mkdir -p datae/cache data/control data/db data/documents data/log
+mkdir -p data/cache data/control data/db data/documents data/log
 
 # cleanup
 docker image prune -f
