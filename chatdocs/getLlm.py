@@ -104,7 +104,7 @@ def from_model_id(
     return_full_text=True,  # langchain expects the full text
     task='text-generation',
     # we pass model parameters here too
-    temperature=0.0,  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
+    #temperature=0.0,  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
     repetition_penalty=1.1,  # without this output begins repeating
     # device=device,
     model_kwargs=_model_kwargs,

@@ -2,20 +2,43 @@
 
 <script>
   const auth = new URLSearchParams(window.location.search).get("auth");
-  const ws = new WebSocket(`ws://${location.host}/ws`);
 
-  ws.addEventListener("message", (event) => {
-    data = JSON.parse(event.data);
-    onReceive(data);
-  });
+  // Function to send a POST request to the REST API endpoint
+  async function send(req) {
+    try {
+      if (auth) {
+        req.auth = auth;
+      }
 
-  const send = (req) => {
-    if (auth) {
-      req["auth"] = auth;
+      const response = await fetch("/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req),
+      });
+
+      if (!response.ok) {
+        console.error("Request failed with status:", response.status);
+        return null; // Handle the error as needed
+      }
+
+      const responseData = await response.json();
+      onReceive(responseData); // Process the response data
+      return responseData;
+    } catch (error) {
+      console.error("Request failed with error:", error);
+      return null; // Handle the error as needed
     }
-    req = JSON.stringify(req);
-    ws.send(req);
-  };
+  }
+
+  // Example usage of the send function
+  // const request = {
+  // id: "unique_id",
+  //query: "your_query_here",
+  //};
+
+  //send(request);
 
   const el = (tag) => document.createElement(tag);
 
@@ -34,7 +57,11 @@
         const summary = el("summary");
         summary.innerHTML =
           documentName +
-          ' (<a href="' + window.location.protocol + '//' + window.location.hostname + '/documents/' +
+          ' (<a href="' +
+          window.location.protocol +
+          "//" +
+          window.location.hostname +
+          "/documents/" +
           sourceName +
           '" target="_blank" style="color: coral">View source</a>)';
 
