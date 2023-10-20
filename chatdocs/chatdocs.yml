@@ -1,0 +1,50 @@
+# embedding model configuration
+embeddings:
+  model: hkunlp/instructor-large # Uses 1.5 GB of VRAM (High Accuracy with lower VRAM usage)
+  # model: hkunlp/instructor-xl # Uses 5 GB of VRAM (Most Accurate of all models)
+  # model: intfloat/e5-large-v2 # Uses 1.5 GB of VRAM (A little less accurate than instructor-large)
+  # model: intfloat/e5-base-v2 # Uses 0.5 GB of VRAM (A good model for lower VRAM GPUs)
+  # model: all-MiniLM-L6-v2 # Uses 0.2 GB of VRAM (Less accurate but fastest - only requires 150mb of vram)
+  model_kwargs:
+    #   use_auth_token: ${AUTHTOKEN}
+    device: cuda
+  encode_kwargs:
+    batch_size: 32
+    device: 0
+
+# retriever configuration
+retriever:
+  search_kwargs:
+    k: 4
+
+# LLM configuration
+#model: meta-llama/Llama-2-7b-chat-hf
+#model: mistralai/Mistral-7B-v0.1
+model: meta-llama/Llama-2-13b-chat-hf
+#model: jphme/Llama-2-13b-chat-german
+# device: 0
+model_kwargs:
+  use_auth_token: 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
+  # use_auth_token: ${AUTHTOKEN}
+  #device_map: auto
+  #load_in_4bit: true
+  #load_in_8bit: false
+  #quantization_config:
+  #load_in_8bit: true
+  #load_in_4bit: true
+  #bnb_4bit_quant_type: "nf4"
+  # bnb_4bit_use_double_quant: true
+  #bnb_4bit_compute_dtype: bfloat16
+pipeline_kwargs:
+  max_new_tokens: 512
+
+# server configuration
+host: 0.0.0.0
+port: 5000
+auth: true
+
+# database configuration
+chroma:
+  persist_directory: db
+  chroma_db_impl: duckdb+parquet
+  anonymized_telemetry: false
