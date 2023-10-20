@@ -22,7 +22,7 @@ ConfigPath = Annotated[
 def download(config: ConfigPath = None):
     from .download import download
 
-    config = get_config(config)
+    config = get_config()
     download(config=config)
 
 
@@ -36,7 +36,7 @@ def add(
 ):
     from .add import add
 
-    config = get_config(config)
+    config = get_config()
     add(config=config, source_directory=str(directory))
 
 
@@ -52,7 +52,7 @@ def chat(
 ):
     from .chat import chat
 
-    config = get_config(config)
+    config = get_config()
     chat(config=config, query=query)
 
 
@@ -60,5 +60,5 @@ def chat(
 def ui(config: ConfigPath = None):
     from .ui import ui
 
-    config = get_config(config)
+    config = get_config()
     ui(config=config)
