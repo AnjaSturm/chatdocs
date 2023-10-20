@@ -12,3 +12,5 @@ def get_embeddings(config: Dict[str, Any]) -> Embeddings:
     else:
         Provider = HuggingFaceEmbeddings
     return Provider(**config)
+
+# TODO: difference between instruct and no instruct??

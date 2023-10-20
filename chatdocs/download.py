@@ -5,6 +5,6 @@ from .llms import get_llm
 
 
 def download(config: Dict[str, Any]) -> None:
-    config = {**config, "download": True}
+    # config = {**config, "download": True}
     get_embeddings(config)
     get_llm(config)
