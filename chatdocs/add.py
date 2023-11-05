@@ -19,8 +19,11 @@ from langchain.document_loaders import (
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
+from langchain.vectorstores import Chroma
 
-from .vectorstores import get_vectorstore, get_vectorstore_from_documents
+from chatdocs.embeddings import get_embeddings
+
+from .vectorstores import get_vectorstore, get_collection, create_collection_from_documents
 
 
 # Custom document loaders
@@ -115,7 +118,7 @@ def process_documents(
         print("No new documents to load")
         exit(0)
     print(f"Loaded {len(documents)} new documents from {source_directory}")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50) #1000, 200?
     texts = text_splitter.split_documents(documents)
     return texts
 
@@ -140,12 +143,13 @@ def does_vectorstore_exist(persist_directory: str) -> bool:
     return False
 
 
-def add(config: Dict[str, Any], source_directory: str) -> None:
+def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
     persist_directory = config["chroma"]["persist_directory"]
     if does_vectorstore_exist(persist_directory):
         # Update and store locally vectorstore
+        # print(f"Appending to existing vectorstore at {db_directory}")
         print(f"Appending to existing vectorstore at {persist_directory}")
-        db = get_vectorstore(config)
+        db = get_collection(config, collection_name)
         collection = db.get()
         texts = process_documents(
             source_directory,
@@ -158,6 +162,58 @@ def add(config: Dict[str, Any], source_directory: str) -> None:
         print("Creating new vectorstore")
         texts = process_documents(source_directory)
         print(f"Creating embeddings. May take a few minutes...")
-        db = get_vectorstore_from_documents(config, texts)
+        db = create_collection_from_documents(config, texts, collection_name)
     db.persist()
     db = None
+
+
+def delete(config: Dict[str, Any], collection_name: str) -> None:
+    
+    # embeddings = get_embeddings(config)
+    # config = config["chroma"]
+    my_db = get_vectorstore(config)
+
+    # my_db = Chroma(
+    #     # collection_name=collection_name,
+    #     persist_directory=config["persist_directory"],
+    #     embedding_function=embeddings,
+    #     # client_settings=Settings(**config),
+    # )
+    
+    # my_db = Chroma(persist_directory="/db", embedding_function=embedding_function)
+
+    for collection in my_db._client.list_collections():
+        print(collection.name, "BEFORE_DELETE")
+
+    my_db._client.delete_collection(collection_name)
+     
+    for collection in my_db._client.list_collections():
+        print(collection.name, "AFTER_DELETE")       
+    
+        # ids = collection.get()['ids']
+        # print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection.name))
+        # if len(ids): collection.delete(ids)
+        
+        
+        
+    # persist_directory = config["chroma"]["persist_directory"]
+    # if does_vectorstore_exist(persist_directory):
+    #     # Update and store locally vectorstore
+    #     # print(f"Appending to existing vectorstore at {db_directory}")
+    #     print(f"Appending to existing vectorstore at {persist_directory}")
+    #     db = get_vectorstore(config, collection_name)
+    #     collection = db.get()
+    #     texts = process_documents(
+    #         source_directory,
+    #         [metadata["source"] for metadata in collection["metadatas"]],
+    #     )
+    #     print(f"Creating embeddings. May take a few minutes...")
+    #     db.add_documents(texts)
+    # else:
+    #     # Create and store locally vectorstore
+    #     print("Creating new vectorstore")
+    #     texts = process_documents(source_directory)
+    #     print(f"Creating embeddings. May take a few minutes...")
+    #     db = create_vectorstore_from_documents(config, texts, collection_name)
+    # db.persist()
+    # db = None
