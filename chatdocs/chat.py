@@ -14,6 +14,7 @@ def print_answer(text: str) -> None:
 def chat(config: Dict[str, Any], query: Optional[str] = None) -> None:
     qa = get_retrieval_qa(config, callback=print_answer)
 
+  #  print("PROMPTTEMPLATEDEFAULT", qa.combine_documents_chain.llm_chain.prompt.template)
     interactive = not query
     print()
     if interactive:
@@ -32,8 +33,7 @@ def chat(config: Dict[str, Any], query: Optional[str] = None) -> None:
         print("[bold]A:", end="", flush=True)
 
         res = qa(query)
-        if config["llm"] != "ctransformers":
-            print_answer(res["result"])
+        print_answer(res["result"])
 
         print()
         for doc in res["source_documents"]:
