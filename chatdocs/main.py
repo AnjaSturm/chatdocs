@@ -33,11 +33,12 @@ def add(
         typer.Argument(help="The path to a directory containing documents."),
     ],
     config: ConfigPath = None,
+    collection_name: str = "cats",
 ):
     from .add import add
 
     config = get_config()
-    add(config=config, source_directory=str(directory))
+    add(config=config, source_directory=str(directory), collection_name=collection_name)
 
 
 @app.command()

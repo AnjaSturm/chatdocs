@@ -11,7 +11,6 @@ def get_llm(
     callback: Optional[Callable[[str], None]] = None,
 ) -> LLM:
     config["model_id"] = config.pop("model")
-    #llm = HuggingFacePipeline.from_model_id(task="text-generation", **config)
     pipeline = from_model_id(**config)
     llm = HuggingFacePipeline(pipeline=pipeline)
     return llm

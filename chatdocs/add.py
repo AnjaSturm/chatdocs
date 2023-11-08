@@ -19,9 +19,6 @@ from langchain.document_loaders import (
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
-from langchain.vectorstores import Chroma
-
-from chatdocs.embeddings import get_embeddings
 
 from .vectorstores import get_vectorstore, get_collection, create_collection_from_documents
 
@@ -143,11 +140,53 @@ def does_vectorstore_exist(persist_directory: str) -> bool:
     return False
 
 
+
+# class Chroma_client:
+#     def __init__(self, config: Dict[str, Any]) -> None:
+#         self.persist_directory = config["chroma"]["persist_directory"]
+#         self.client = Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=self.persist_directory ))
+#         self.embeddings = get_embeddings(config)
+        
+#     def add(self, source_directory: str, collection_name: str) -> None:
+#         if does_vectorstore_exist(self.persist_directory):
+#             # Update and store locally vectorstore
+#             print(f"Appending to existing vectorstore at {self.persist_directory}")
+#             collection = self.client.get_collection(name=collection_name, embedding_function=self.embeddings)
+#             metadata =  collection.get(include=["metadatas"])
+#             texts = process_documents(
+#                 source_directory,
+#                 [metadata["source"] for metadata in metadata["metadatas"]],
+#             )
+#             print(f"Creating embeddings. May take a few minutes...")
+#             add_documents(texts, collection, self.embeddings)
+
+#         else:
+#             # Create and store locally vectorstore
+#             print("Creating new vectorstore")
+#             collection = self.client.create_collection(collection_name, embedding_function=self.embeddings)
+#             texts = process_documents(source_directory)
+#             print(f"Creating embeddings. May take a few minutes...")
+#             add_documents(texts, collection, self.embeddings)
+            
+# def add_documents(documents: List[Document], collection, embeddings) -> None:
+#     texts = [doc.page_content for doc in documents]
+#     metadatas = [doc.metadata for doc in documents]
+#     ids = [str(uuid.uuid1()) for _ in texts]
+#     embeddings = embeddings.embed_documents(list(texts))
+#     collection.add(metadatas=metadatas, ids=ids, embeddings=embeddings)
+    
+# def as_retiever(collection):
+#     return VectorStoreRetriever(
+#         vectorstore=collection,
+        
+#     )
+
+
+
 def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
     persist_directory = config["chroma"]["persist_directory"]
     if does_vectorstore_exist(persist_directory):
         # Update and store locally vectorstore
-        # print(f"Appending to existing vectorstore at {db_directory}")
         print(f"Appending to existing vectorstore at {persist_directory}")
         db = get_collection(config, collection_name)
         collection = db.get()
@@ -168,25 +207,10 @@ def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> 
 
 
 def delete(config: Dict[str, Any], collection_name: str) -> None:
-    
-    # embeddings = get_embeddings(config)
-    # config = config["chroma"]
     my_db = get_vectorstore(config)
-
-    # my_db = Chroma(
-    #     # collection_name=collection_name,
-    #     persist_directory=config["persist_directory"],
-    #     embedding_function=embeddings,
-    #     # client_settings=Settings(**config),
-    # )
-    
-    # my_db = Chroma(persist_directory="/db", embedding_function=embedding_function)
-
     for collection in my_db._client.list_collections():
         print(collection.name, "BEFORE_DELETE")
-
     my_db._client.delete_collection(collection_name)
-     
     for collection in my_db._client.list_collections():
         print(collection.name, "AFTER_DELETE")       
     
@@ -194,26 +218,3 @@ def delete(config: Dict[str, Any], collection_name: str) -> None:
         # print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection.name))
         # if len(ids): collection.delete(ids)
         
-        
-        
-    # persist_directory = config["chroma"]["persist_directory"]
-    # if does_vectorstore_exist(persist_directory):
-    #     # Update and store locally vectorstore
-    #     # print(f"Appending to existing vectorstore at {db_directory}")
-    #     print(f"Appending to existing vectorstore at {persist_directory}")
-    #     db = get_vectorstore(config, collection_name)
-    #     collection = db.get()
-    #     texts = process_documents(
-    #         source_directory,
-    #         [metadata["source"] for metadata in collection["metadatas"]],
-    #     )
-    #     print(f"Creating embeddings. May take a few minutes...")
-    #     db.add_documents(texts)
-    # else:
-    #     # Create and store locally vectorstore
-    #     print("Creating new vectorstore")
-    #     texts = process_documents(source_directory)
-    #     print(f"Creating embeddings. May take a few minutes...")
-    #     db = create_vectorstore_from_documents(config, texts, collection_name)
-    # db.persist()
-    # db = None
