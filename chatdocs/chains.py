@@ -5,10 +5,14 @@ from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler  # for streaming response
 from langchain.callbacks.manager import CallbackManager
+from langchain.llms.base import LLM
+from langchain.vectorstores.base import VectorStore
+
+
 
 
 from .llms import get_llm
-from .vectorstores import get_collection
+from .vectorstores import get_collection, get_vectorstore
 
 
 callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
@@ -57,15 +61,10 @@ memory = ConversationBufferMemory(input_key="question", memory_key="history")
 
 def get_retrieval_qa(
     config: Dict[str, Any],
-    collection_name: str = "cats",
-    *,
-    callback: Optional[Callable[[str], None]] = None,
+    llm: LLM,
+    collection: VectorStore,
 ) -> RetrievalQA:
-#[RetrievalQA, RetrievalQA]:
-    db = get_collection(config, collection_name)
-    retriever = db.as_retriever(**config["retriever"]) # config übergibt anzahl an documenten -> 4
-    llm = get_llm(config, callback=callback)
-
+    retriever = collection.as_retriever(**config["retriever"])
     qa = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
