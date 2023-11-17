@@ -2,6 +2,12 @@
 /db/
 /documents/
 /docker/data
+/=0.3.0,
+/=0.4.2,
+/api-mdoo-dev-s8l-tech.pem
+/jwt_public.b64
+/jwt_public.der
+/jwt_public.pem
 
 # Created by https://www.toptal.com/developers/gitignore/api/c++,python,cmake,linux,macos,windows,sublimetext,vim,visualstudio,visualstudiocode
 # Edit at https://www.toptal.com/developers/gitignore?templates=c++,python,cmake,linux,macos,windows,sublimetext,vim,visualstudio,visualstudiocode
