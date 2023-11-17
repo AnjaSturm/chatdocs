@@ -1,0 +1,14 @@
+langchain==0.0.267
+chromadb==0.4.6
+transformers
+quart
+typing
+pdf-miner.six
+InstructorEmbedding
+quart_jwt_extended
+rich
+torch
+auto-gptq>=0.4.2,<0.5.0
+bitandbytes
+scipy
+sentence_transformers
