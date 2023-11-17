@@ -20,7 +20,6 @@ from .vectorstores import get_collection, get_vectorstore
 callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
 
 template_llama = """
-[INST]
 You are a helpful assistant, you will use the provided context (delimited by <ctx></ctx>) to answer user questions (delimited by <qs></qs>).
 Read the given context before answering questions and think step by step. If you can not answer a user question based on 
 the provided context, inform the user. Do not use any other information for answering user. Provide a detailed answer to the question. Answer in German.
@@ -35,7 +34,6 @@ the provided context, inform the user. Do not use any other information for answ
 </qs>
 ------
 Answer:
-[/INST]
 """
 
 
