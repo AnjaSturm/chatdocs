@@ -28,7 +28,7 @@ ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 
 
-def ui(config: Dict[str, Any]) -> None:
+def api(config: Dict[str, Any]) -> None:
     
     # instantiate llm and embeddings
     llm = get_llm(config)
@@ -168,9 +168,7 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     async def query():
         jwt_identity = get_jwt_identity()
         req = await request.form
-        print(req, "REQ")
         query = req["query"]
-        print(query, "QUERY")
         data = putWorkInQueueAndWaitForDone(str(jwt_identity), query)
         res = {"id": str(jwt_identity)}
         res["result"] = data["result"]["result"]

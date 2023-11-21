@@ -64,8 +64,8 @@ def chat(
 
 
 @app.command()
-def ui(config: ConfigPath = None):
-    from .ui import ui
+def api(config: ConfigPath = None):
+    from .api import api
 
     config = get_config()
-    ui(config=config)
+    api(config=config)
