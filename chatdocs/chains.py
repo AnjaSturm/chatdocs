@@ -8,15 +8,6 @@ from langchain.callbacks.manager import CallbackManager
 from langchain.llms.base import LLM
 from langchain.vectorstores.base import VectorStore
 
-from .add import as_retriever
-
-
-
-
-from .llms import get_llm
-from .vectorstores import get_collection, get_vectorstore
-
-
 callback_manager = CallbackManager([StreamingStdOutCallbackHandler()])
 
 template_llama = """
@@ -64,8 +55,7 @@ def get_retrieval_qa(
     llm: LLM,
     collection: VectorStore,
 ) -> RetrievalQA:
-    # retriever = collection.as_retriever(**config["retriever"])
-    retriever = as_retriever(collection)
+    retriever = collection.as_retriever(**config["retriever"])
     qa = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
