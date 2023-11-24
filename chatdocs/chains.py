@@ -47,14 +47,14 @@ Answer:
 [/INST]
 """
 
-prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template_llama)
-memory = ConversationBufferMemory(input_key="question", memory_key="history")
 
 def get_retrieval_qa(
     config: Dict[str, Any],
     llm: LLM,
     collection: VectorStore,
 ) -> RetrievalQA:
+    prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template_llama)
+    memory = ConversationBufferMemory(input_key="question", memory_key="history")
     retriever = collection.as_retriever(**config["retriever"])
     qa = RetrievalQA.from_chain_type(
         llm=llm,

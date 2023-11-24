@@ -20,8 +20,9 @@ retriever:
 # LLM configuration
 #model: meta-llama/Llama-2-7b-chat-hf
 #model: mistralai/Mistral-7B-v0.1
-model: meta-llama/Llama-2-13b-chat-hf
-#model: jphme/Llama-2-13b-chat-german
+#model: TheBloke/em_german_mistral_v01-GPTQ
+#model: meta-llama/Llama-2-13b-chat-hf
+model: jphme/Llama-2-13b-chat-german
 # device: 0
 model_kwargs:
   use_auth_token: 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

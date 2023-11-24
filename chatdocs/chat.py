@@ -12,7 +12,7 @@ def print_answer(text: str) -> None:
 
 
 def chat(config: Dict[str, Any], query: Optional[str] = None) -> None:
-    qa = get_retrieval_qa(config, callback=print_answer)
+    # qa = get_retrieval_qa(config, callback=print_answer)
 
   #  print("PROMPTTEMPLATEDEFAULT", qa.combine_documents_chain.llm_chain.prompt.template)
     interactive = not query

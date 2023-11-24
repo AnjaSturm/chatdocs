@@ -51,7 +51,7 @@ def from_model_id(
     return pipeline
 
 
-def load_quantized_model_qptq(model_id, model_basename, device_type, logging):
+def load_quantized_model_qptq(model_id, model_basename="model.safetensors", **kwargs):
     """
     Load a GPTQ quantized model using AutoGPTQForCausalLM.
 

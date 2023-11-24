@@ -22,13 +22,13 @@ def get_collection(config: Dict[str, Any], collection_name: str, embeddings: Emb
         client_settings=Settings(**config),
     )
     
-def get_vectorstore(config: Dict[str, Any], embeddings: Embeddings) -> VectorStore:
-    config = config["chroma"]
-    return Chroma(
-        persist_directory=config["persist_directory"],
-        embedding_function=embeddings,
-        client_settings=Settings(**config),
-    )
+# def get_vectorstore(config: Dict[str, Any], embeddings: Embeddings) -> VectorStore:
+#     config = config["chroma"]
+#     return Chroma(
+#         persist_directory=config["persist_directory"],
+#         embedding_function=embeddings,
+#         client_settings=Settings(**config),
+#     )
 
 def create_collection_from_documents(
     config: Dict[str, Any],

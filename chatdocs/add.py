@@ -26,9 +26,9 @@ from langchain.document_loaders import (
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 
-from .vectorstores import get_collection, get_vectorstore, create_collection_from_documents
+from .vectorstores import get_collection, create_collection_from_documents
 from chromadb.config import Settings
-from chromadb import Client
+from chromadb import PersistentClient
 
 
 
@@ -89,6 +89,8 @@ def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Docum
     """
     Loads all documents from the source documents directory, ignoring specified files
     """
+    print(source_dir, "SOURCE_DIR")
+    print(ignored_files, "IGNORED_FILES")
     all_files = []
     for ext in LOADER_MAPPING:
         all_files.extend(
@@ -153,7 +155,7 @@ def does_vectorstore_exist(persist_directory: str) -> bool:
 class Chroma_client:
     def __init__(self, config: Dict[str, Any]) -> None:
         self.persist_directory = config["chroma"]["persist_directory"]
-        self.client = Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=self.persist_directory ))
+        self.client = PersistentClient(persist_directory=self.persist_directory)
         self.embeddings = get_embeddings(config)
         
     def add(self, source_directory: str, collection_name: str) -> None:
@@ -190,74 +192,12 @@ def as_retriever(collection: VectorStore):
     )
 
 
-
-# def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
-#     persist_directory = config["chroma"]["persist_directory"]
-#     if does_vectorstore_exist(persist_directory):
-#         # Update and store local vectorstore
-#         print(f"Appending to existing vectorstore at {persist_directory}")
-#         collection = get_collection(config, collection_name, get_embeddings(config))
-#         metadatas = collection.get(include=["metadatas"])
-#         texts = process_documents(
-#             source_directory,
-#             [metadata["source"] for metadata in metadatas["metadatas"]],
-#         )
-#         if len(texts) != 0:	
-#             print(f"Creating embeddings. May take a few minutes...")
-#             collection.add_documents(texts)
-#     else:
-#         # Create and store local vectorstore
-#         print("Creating new vectorstore")
-#         texts = process_documents(source_directory)
-#         if len(texts) != 0:	
-#             print(f"Creating embeddings. May take a few minutes...")
-#             collection = create_collection_from_documents(config, texts, collection_name, get_embeddings(config))
-#             print("create embeddings from documents")
-#         else:   
-#             collection = get_collection(config, collection_name, get_embeddings(config))
-#             print("get collection")
-#     collection.persist()
-#     collection = None
-
-
-
-
-
 def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
     persist_directory = config["chroma"]["persist_directory"]
-    if does_vectorstore_exist(persist_directory):
+    # if not does_vectorstore_exist(persist_directory): # NOT_WORKING
         # Update and store local vectorstore
-        print(f"Appending to existing vectorstore at {persist_directory}")
-        collection = get_collection(config, collection_name, get_embeddings(config))
-        metadatas = collection.get(include=["metadatas"])
-        texts = process_documents(
-            source_directory,
-            [metadata["source"] for metadata in metadatas["metadatas"]],
-        )
-        if len(texts) != 0:	
-            print(f"Creating embeddings. May take a few minutes...")
-            collection.add_documents(texts)
-    else:
-        # Create and store local vectorstore
-        print("Creating new vectorstore")
-        texts = process_documents(source_directory)
-        if len(texts) != 0:	
-            print(f"Creating embeddings. May take a few minutes...")
-            collection = create_collection_from_documents(config, texts, collection_name, get_embeddings(config))
-            print("create embeddings from documents")
-        else:   
-            collection = get_collection(config, collection_name, get_embeddings(config))
-            print("get collection")
-    collection.persist()
-    collection = None
-    
-    
-    
-    
-    
-def addApi(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
+    print(f"Appending to existing vectorstore at {persist_directory}")
     collection = get_collection(config, collection_name, get_embeddings(config))
-    
     metadatas = collection.get(include=["metadatas"])
     texts = process_documents(
         source_directory,
@@ -266,14 +206,27 @@ def addApi(config: Dict[str, Any], source_directory: str, collection_name: str) 
     if len(texts) != 0:	
         print(f"Creating embeddings. May take a few minutes...")
         collection.add_documents(texts)
-    collection.persist()
-    collection=None
-        
+    # else:
+    #     # Create and store local vectorstore
+    #     print("Creating new vectorstore")
+    #     texts = process_documents(source_directory)
+    #     if len(texts) != 0:	
+    #         print(f"Creating embeddings. May take a few minutes...")
+    #         collection = create_collection_from_documents(config, texts, collection_name, get_embeddings(config))
+    #         print("create embeddings from documents")
+    #     else:   
+    #         collection = get_collection(config, collection_name, get_embeddings(config))
+    #         print("get collection")
+    # collection.persist()
+    # collection = None
+    
+    
+# def test(config: Dict[str, Any])        
         
 
 
-def delete(config: Dict[str, Any], collection_name: str, vectorstore: VectorStore) -> None:
-    # vectorstore = get_vectorstore(config, get_embeddings(config))
+def delete(config: Dict[str, Any], collection_name: str) -> None:
+    vectorstore = get_vectorstore(config, get_embeddings(config))
     vectorstore._client.delete_collection(collection_name)
     vectorstore.persist()
     vectorstore = None

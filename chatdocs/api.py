@@ -8,7 +8,9 @@ from functools import partial
 from typing import Any, Dict
 from pathlib import Path
 
-from quart import Quart, render_template, request, session
+from werkzeug.utils import secure_filename
+
+from quart import Quart, request, session, jsonify, send_from_directory
 from quart_jwt_extended import (
     JWTManager,
     jwt_required,
@@ -90,13 +92,18 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     def get_directory(directory):
         return DOCUMENT_DIRECTORY / directory
 
-    def getUserCompany(token):
+    def getUserData(token):
         url = "https://api.mdoo.dev.s8l.tech/user/profile"
         data =  {"jsonrpc": "2.0", "method": "get"}
         headers = {"Authorization": "Bearer " + token, 'Accept': 'application/json'}
         r = requests.post(url=url, json=data, headers=headers)
-        company = r.json()["result"]["labels"]["customer"]
-        return company
+        labels = r.json()["result"]["labels"]
+        if "straightdocs-admin" in labels:
+            admin =  True
+        else:
+            admin = False
+        company = labels["customer"]
+        return company, admin
 
     def initUser(jwt_identity: any, headers: any):
         print("jwt_identity: " + str(jwt_identity))
@@ -107,8 +114,8 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         
         if (session_id not in session_context):
             print("Generating new session data")
-            company = getUserCompany(headers["Authorization"].split(" ")[1])
-            session_context[session_id] = { "qa": get_retrieval_qa(config, llm, get_collection(config, company, embeddings)), "company": company}
+            company, admin = getUserData(headers["Authorization"].split(" ")[1])
+            session_context[session_id] = { "qa": get_retrieval_qa(config, llm, get_collection(config, company, embeddings)), "company": company, "admin": admin}
             
         else:
             print("Using existing session data")
@@ -116,12 +123,6 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         
         
         
-
-    @app.get("/")
-    @jwt_required
-    async def index():
-        return await render_template("index.html")
-    
     @app.route("/login", methods=["POST"])
     @jwt_required
     async def login():
@@ -137,6 +138,150 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         session.pop('session_id', None)
         session_context.pop(jwt_identity)
         return "logged out successfully", 200
+    
+    
+    @app.route("/query", methods=["POST", "GET"])
+    @jwt_required
+    async def query():
+        jwt_identity = get_jwt_identity()
+        req = await request.form
+        query = req["query"]
+        data = putWorkInQueueAndWaitForDone(str(jwt_identity), query)
+        res = {"id": str(jwt_identity)}
+        res["result"] = data["result"]["result"]
+        res["sources"] = sources = []
+        for doc in data["result"]["source_documents"]:
+            source, content = doc.metadata["source"], doc.page_content
+            sources.append({"source": source, "content": content})
+    
+        print(res, "RES")
+        return json.dumps(res)
+    
+    
+    # TODO: use str8labs media server in future?
+    @app.route("/files", methods=["GET", "POST", "DELETE"])
+    @jwt_required
+    async def manage_files():
+        jwt_identity = get_jwt_identity()
+        # company_name = session_context[jwt_identity]["company"]   
+        company_directory = DOCUMENT_DIRECTORY / "straightdocs-testcutomer"    
+        
+        if request.method == "POST":
+            if not company_directory.exists():
+                company_directory.mkdir(parents=True, exist_ok=True)
+                
+            req = await request.files
+            if 'file' not in req:
+                return 'No file', 400
+            file = req['file']
+            if file.filename == '':
+                return 'No file selected', 400
+            filename = secure_filename(file.filename)
+            file_directory = company_directory / filename
+            if file_directory.is_file():
+                return 'File already exists', 409
+            if not allowed_file(filename):
+                return 'File type not allowed', 415
+            try:
+                await file.save(file_directory)
+                return "File uploaded successfully", 201
+            except Exception as e:
+                return f"Failed to upload file: {str(e)}", 500
+
+        elif request.method == "GET":
+            files = [file.name for file in company_directory.glob('*') if file.is_file()]
+            return jsonify({"files": files}), 200
+        
+        elif request.method == "DELETE":
+            if not company_directory.is_dir():
+                return "Directory not found", 404
+            
+            file_list = [file for file in company_directory.glob('*') if file.is_file()]
+            for file in file_list:
+                file.unlink()
+                    
+            if not any(company_directory.iterdir()):
+                company_directory.rmdir()
+                return "Files deleted successfully", 200
+            
+            return "Files deleted successfully", 200
+        
+        
+        
+                    # multiple files
+            # files = await request.files
+            # if 'file' not in files:
+            #     return 'No file', 401
+            # file_list = files.getlist('file')
+            # for file in file_list:
+            #     filename = file.filename
+            #     if filename == '':
+            #         continue
+            #         # return 'No file selected', 401
+            #     if file and allowed_file(filename):
+            #         file_directory = company_directory / secure_filename(filename)
+            #         if file_directory.is_file():
+            #             continue
+            #             # return 'file already exists', 409
+            #         await file.save(file_directory)
+            # config = get_config()
+            # add(config=config, source_directory=str(company_directory), collection_name=company_name) # does this make sense here? Or should it be done in a separate thread? Or should we use a seperate button for this?
+            # return "db created/updated successfully", 201
+        
+        
+        
+        
+        
+    # TODO: use str8labs media server
+    @app.route('/files/<filename>', methods=["GET", "DELETE"])
+    @jwt_required
+    async def manage_file(filename):
+        jwt_identity = get_jwt_identity()
+        if not session_context[jwt_identity]["admin"]:
+            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
+        company_name = session_context[jwt_identity]["company"]   
+        company_directory = DOCUMENT_DIRECTORY / company_name 
+        
+        if request.method == "GET":
+            return await send_from_directory(company_directory,
+                               filename)
+            
+        # TODO: only allow for admin    
+        elif request.method == "DELETE":
+            if not company_directory.is_dir():
+                return "directory not found", 404
+            file_directory = company_directory / secure_filename(filename)
+            if file_directory.is_file():
+                file_directory.unlink()
+                return "File deleted successfully", 200
+            return "File not found", 404
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
 
     @app.route("/vectorstore", methods=["POST", "DELETE"])
@@ -163,22 +308,7 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         return "deleted file from collection successfully", 200
 
         
-    @app.route("/query", methods=["POST", "GET"])
-    @jwt_required
-    async def query():
-        jwt_identity = get_jwt_identity()
-        req = await request.form
-        query = req["query"]
-        data = putWorkInQueueAndWaitForDone(str(jwt_identity), query)
-        res = {"id": str(jwt_identity)}
-        res["result"] = data["result"]["result"]
-        res["sources"] = sources = []
-        for doc in data["result"]["source_documents"]:
-            source, content = doc.metadata["source"], doc.page_content
-            sources.append({"source": source, "content": content})
-    
-        print(res, "RES")
-        return json.dumps(res)
+
             
 
     host, port = config["host"], config["port"]
