@@ -1,13 +1,7 @@
 import os
 import glob
-from typing import Any, Dict, List
+from typing import List
 from multiprocessing import Pool
-import uuid
-from chatdocs.embeddings import get_embeddings
-from langchain.vectorstores.base import VectorStore, VectorStoreRetriever
-from langchain.embeddings.base import Embeddings
-
-
 
 from tqdm import tqdm
 from langchain.document_loaders import (
@@ -26,12 +20,11 @@ from langchain.document_loaders import (
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 
-from .vectorstores import get_collection, create_collection_from_documents
-from chromadb.config import Settings
-from chromadb import PersistentClient
+from .vectorstores import get_collection
 
 
 
+# helper functions
 # Custom document loaders
 class MyElmLoader(UnstructuredEmailLoader):
     """Wrapper to fallback to text/plain when default does not work"""
@@ -89,8 +82,6 @@ def load_documents(source_dir: str, ignored_files: List[str] = []) -> List[Docum
     """
     Loads all documents from the source documents directory, ignoring specified files
     """
-    print(source_dir, "SOURCE_DIR")
-    print(ignored_files, "IGNORED_FILES")
     all_files = []
     for ext in LOADER_MAPPING:
         all_files.extend(
@@ -131,109 +122,51 @@ def process_documents(
     return texts
 
 
-def does_vectorstore_exist(persist_directory: str) -> bool:
-    """
-    Checks if vectorstore exists
-    """
-    if os.path.exists(os.path.join(persist_directory, "index")):
-        if os.path.exists(
-            os.path.join(persist_directory, "chroma-collections.parquet")
-        ) and os.path.exists(
-            os.path.join(persist_directory, "chroma-embeddings.parquet")
-        ):
-            list_index_files = glob.glob(os.path.join(persist_directory, "index/*.bin"))
-            list_index_files += glob.glob(
-                os.path.join(persist_directory, "index/*.pkl")
-            )
-            # At least 3 documents are needed in a working vectorstore
-            if len(list_index_files) > 3:
-                return True
-    return False
 
-
-
-class Chroma_client:
-    def __init__(self, config: Dict[str, Any]) -> None:
-        self.persist_directory = config["chroma"]["persist_directory"]
-        self.client = PersistentClient(persist_directory=self.persist_directory)
-        self.embeddings = get_embeddings(config)
-        
-    def add(self, source_directory: str, collection_name: str) -> None:
-        if does_vectorstore_exist(self.persist_directory):
-            # Update and store locally vectorstore
-            print(f"Appending to existing vectorstore at {self.persist_directory}")
-            collection = self.client.get_collection(name=collection_name, embedding_function=self.embeddings)
-            metadata =  collection.get(include=["metadatas"])
-            texts = process_documents(
-                source_directory,
-                [metadata["source"] for metadata in metadata["metadatas"]],
-            )
-            print(f"Creating embeddings. May take a few minutes...")
-            add_documents(texts, collection, self.embeddings)
-
-        else:
-            # Create and store locally vectorstore
-            print("Creating new vectorstore")
-            collection = self.client.create_collection(collection_name, embedding_function=self.embeddings)
-            texts = process_documents(source_directory)
-            print(f"Creating embeddings. May take a few minutes...")
-            add_documents(texts, collection, self.embeddings)
-            
-def add_documents(documents: List[Document], collection, embeddings) -> None:
-    texts = [doc.page_content for doc in documents]
-    metadatas = [doc.metadata for doc in documents]
-    ids = [str(uuid.uuid1()) for _ in texts]
-    embeddings = embeddings.embed_documents(list(texts))
-    collection.add(metadatas=metadatas, ids=ids, embeddings=embeddings)
-    
-def as_retriever(collection: VectorStore):
-    return VectorStoreRetriever(
-        vectorstore=collection,
-    )
-
-
-def add(config: Dict[str, Any], source_directory: str, collection_name: str) -> None:
-    persist_directory = config["chroma"]["persist_directory"]
-    # if not does_vectorstore_exist(persist_directory): # NOT_WORKING
-        # Update and store local vectorstore
-    print(f"Appending to existing vectorstore at {persist_directory}")
-    collection = get_collection(config, collection_name, get_embeddings(config))
+# adds documents to collection
+def add(source_directory: str, collection_name: str) -> None:
+    collection = get_collection(collection_name)
+    print("Count before add:", collection._client.get_collection(collection_name).count())
     metadatas = collection.get(include=["metadatas"])
     texts = process_documents(
         source_directory,
         [metadata["source"] for metadata in metadatas["metadatas"]],
     )
-    if len(texts) != 0:	
+    if len(texts) != 0:
         print(f"Creating embeddings. May take a few minutes...")
-        collection.add_documents(texts)
-    # else:
-    #     # Create and store local vectorstore
-    #     print("Creating new vectorstore")
-    #     texts = process_documents(source_directory)
-    #     if len(texts) != 0:	
-    #         print(f"Creating embeddings. May take a few minutes...")
-    #         collection = create_collection_from_documents(config, texts, collection_name, get_embeddings(config))
-    #         print("create embeddings from documents")
-    #     else:   
-    #         collection = get_collection(config, collection_name, get_embeddings(config))
-    #         print("get collection")
-    # collection.persist()
-    # collection = None
-    
-    
-# def test(config: Dict[str, Any])        
+        collection.add_documents(texts) 
+    print("Count after add:", collection._client.get_collection(collection_name).count())
+             
+      
+# delete complete collection        
+def delete(collection_name: str) -> None:
+    vectorstore = get_collection()
+    collections = vectorstore._client.list_collections()
+    collection_exists = any(collection.name == collection_name for collection in collections)
+
+    # cannot happen bc of empty initialization after deletion, but just in case
+    if not collection_exists:
+        print("Collection", collection_name, "does not exist")
+    else:
+        print("Collections before delete of", collection_name)
+        for collection in collections:
+            print(collection.name)
         
-
-
-def delete(config: Dict[str, Any], collection_name: str) -> None:
-    vectorstore = get_vectorstore(config, get_embeddings(config))
-    vectorstore._client.delete_collection(collection_name)
-    vectorstore.persist()
-    vectorstore = None
+        vectorstore._client.delete_collection(collection_name)
+        
+        print("Collections after delete of", collection_name)
+        updated_collections = vectorstore._client.list_collections()
+        for collection in updated_collections:
+            print(collection.name)
+            
+# delete single file from collection            
+def delete_file(collection_name: str, file_path: str) -> None:
+    collection = get_collection(collection_name)
     
-# def delete_file(vectorstore: VectorStore, collection_name: str, file_name: str) -> None:
-    
-        # ids = collection.get()['ids']
-        # print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection.name))
-        # if len(ids): collection.delete(ids)
+    ids = collection.get(where={"source": file_path})['ids']
+    print("ids before delete of", file_path,":", ids)
+    print(ids)
+    print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection_name))
+    if len(ids): collection.delete(ids)
+    print("ids after delete of", file_path, ":", collection.get(where={"source": file_path})['ids'])
         
