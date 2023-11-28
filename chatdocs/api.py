@@ -1,21 +1,19 @@
 import json
 import secrets
+from time import perf_counter
 import uuid
 import requests
 from queue import Queue
 from threading import Thread, Event
-from functools import partial
+from functools import partial, lru_cache, wraps
 from typing import Any, Dict
 from pathlib import Path
+from datetime import datetime, timedelta
 
 from werkzeug.utils import secure_filename
 
 from quart import Quart, request, session, jsonify, send_from_directory
-from quart_jwt_extended import (
-    JWTManager,
-    jwt_required,
-    get_jwt_identity,
-)
+from quart_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 from rich import print
 
 from .chains import get_retrieval_qa
@@ -29,12 +27,11 @@ ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 
 
+
 def api(config: Dict[str, Any]) -> None:
     
     # instantiate llm and qa
-    llm = get_llm(config)
-    session_context = {}
-    
+    llm = get_llm(config)    
         
     # app configuration    
     app = Quart(__name__, template_folder="data")
@@ -54,23 +51,51 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
 -----END PUBLIC KEY-----
     """
     jwt = JWTManager(app)
-        
-        
+    
+    # caching of user session data
+    def timed_lru_cache(seconds: int, maxsize: int = 128):
+        def wrapper_cache(func):
+            func = lru_cache(maxsize=maxsize)(func)
+            func.lifetime = timedelta(seconds=seconds)
+            func.expiration = datetime.utcnow() + func.lifetime
+
+            @wraps(func)
+            def wrapped_func(*args, **kwargs):
+                if datetime.utcnow() >= func.expiration:
+                    func.cache_clear()
+                    func.expiration = datetime.utcnow() + func.lifetime
+                return func(*args, **kwargs)
+            return wrapped_func
+        return wrapper_cache
+
+    @timed_lru_cache(seconds=60*60*24)
+    def get_session_context(session_id):
+        return {}
         
     # asynchronous processing of queries
     q = Queue()
     
     # Block until all tasks are done.
-    def putWorkInQueueAndWaitForDone(query: str):
+    def putWorkInQueueAndWaitForDone(query: str, qa: any):
         event = Event()
-        qa = session_context["qa"]
         task = {'id': str(uuid.uuid4()), 'query': query}
         q.put(partial(work, event, qa, task))
         event.wait()
         return task
         
+    # time qa chain
+    def timeit(func):
+        def _inner(*args, **kwargs):
+            start = perf_counter()
+            res = func(*args, **kwargs)
+            end = perf_counter()
+            print(f"Elapsed = {(end - start)*1000:.4f}")
+            return res
+        return _inner
+    
+        
     def work(event, qa, task):
-        task['result'] = qa(task['query'])
+        task['result'] = timeit(qa)(task['query'])
         event.set()
         
     def worker() -> None:
@@ -101,32 +126,24 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         return company, admin
 
     def initUser(headers: any):
-        company, admin = getUserData(headers["Authorization"].split(" ")[1])
         if 'session_id' not in session:
-            session['session_id'] = str(        uuid.uuid4())
-        if 'company' not in session:
-            session['company'] = company
-        if 'admin' not in session:
-            session['admin'] = admin
-        
-        session_id = session['session_id']
-        print("Query for session id " + session_id)
-        
-        if (session_id not in session_context):
-            print("Generating new session data")
-            session_context['session_id'] = session_id
-            session_context["qa"] = get_retrieval_qa(config, llm, get_collection(company))
-            
-        else:
-            print("Using existing session data")
-        print("Session data for current request: " + str(session_context)) 
+            session['session_id'] = str(uuid.uuid4())
+
+        context = get_session_context(session['session_id'])
+
+        if len(context) == 0:
+            print("Initializing session data for current request")  
+            company, admin = getUserData(headers["Authorization"].split(" ")[1])
+            context['company'] = company
+            context['admin'] = admin
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company))
+                
+        print("Session data for current request: " + str(context)) 
         
         
     @app.route("/login", methods=["POST"])
     @jwt_required
     async def login():
-        jwt_identity = get_jwt_identity()
-        print("jwt_identity: " + str(jwt_identity))
         initUser(request.headers)
         return jsonify({"message": "logged in successfully"}), 200
 
@@ -134,17 +151,24 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     @app.route("/logout", methods=["POST"])
     @jwt_required
     async def logout():
+        if 'session_id' in session:
+            get_session_context(session['session_id']).clear()
         session.clear()
-        session_context.clear()
         return jsonify({"message": "logged out successfully"}), 200
     
     
     @app.route("/query", methods=["POST", "GET"])
     @jwt_required
     async def query():
+        context = get_session_context(session['session_id'])
+        if len(context) == 0:
+            session.clear()
+            print("Session expired, please login again")
+            return jsonify({"message": "Session expired, please login again"}), 401
+        
         req = await request.form
         query = req["query"]
-        data = putWorkInQueueAndWaitForDone(query)
+        data = putWorkInQueueAndWaitForDone(query, context["qa"])
         res = {"id": data["id"]}
         res["result"] = data["result"]["result"]
         res["sources"] = sources = []
@@ -160,9 +184,15 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     @app.route("/files", methods=["GET", "POST", "DELETE"])
     @jwt_required
     async def manage_files():
-        if not session["admin"]:
+        context = get_session_context(session['session_id'])
+        if len(context) == 0:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
             return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-        company_name = session["company"]   
+
+        company_name = context["company"]   
         company_directory = DOCUMENT_DIRECTORY / company_name  
         
         if request.method == "POST":
@@ -214,9 +244,15 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     @app.route('/files/<filename>', methods=["GET", "DELETE"])
     @jwt_required
     async def manage_file(filename):
-        if not session["admin"]:
+        context = get_session_context(session['session_id'])
+        if len(context) == 0:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
             return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-        company_name = session["company"]   
+
+        company_name = context["company"]   
         company_directory = DOCUMENT_DIRECTORY / company_name 
         
         if request.method == "GET":
@@ -236,40 +272,46 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     @app.route("/vectorstore", methods=["POST", "DELETE"])
     @jwt_required
     async def vectorstore():
-        if not session["admin"]:
+        context = get_session_context(session['session_id'])
+        if len(context) == 0:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
             return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-        company_name = session["company"]  
+
+        company_name = context["company"]   
         company_directory = DOCUMENT_DIRECTORY / company_name
         
         if request.method == "POST":  
             add(source_directory=str(company_directory), collection_name=company_name)
-            new_qa = get_retrieval_qa(config, llm, get_collection(company_name))
-            session_context["qa"] = new_qa
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
             return jsonify({"message": f"added files to collection {str(company_name)} successfully"}), 200
     
         elif request.method == "DELETE":
             delete(collection_name=company_name)
-            new_qa = get_retrieval_qa(config, llm, get_collection(company_name))
-            session_context["qa"] = new_qa
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
             return jsonify({"message": f"deleted collection {str(company_name)} successfully"}), 200
             
      
     @app.route("/vectorstore/<filename>", methods=["DELETE"])
     @jwt_required
     async def delete_file_from_collection(filename):
-        if not session["admin"]:
+        context = get_session_context(session['session_id'])
+        if len(context) == 0:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
             return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-        company_name = session["company"] 
+
+        company_name = context["company"]   
         company_directory = DOCUMENT_DIRECTORY / company_name / filename
         delete_file(company_name, str(company_directory))
-        new_qa = get_retrieval_qa(config, llm, get_collection(company_name))
-        session_context["qa"] = new_qa
+        context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
         return jsonify({"message": f"deleted file {str(filename)} from collection {str(company_name)} successfully"}), 200
             
 
     host, port = config["host"], config["port"]
     app.run(host=host, port=port, use_reloader=False, debug=True)
     
-    
-
-
