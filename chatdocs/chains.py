@@ -54,9 +54,11 @@ def get_retrieval_qa(
     collection: VectorStore,
 ) -> RetrievalQA:
     prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template_llama)
-    memory = ConversationBufferMemory(input_key="question", memory_key="history")
+    memory = ConversationBufferMemory(input_key="question", memory_key="history", max_token_limit=40) # limit memory consumtion to 40 tokens
     retriever = collection.as_retriever(**config["retriever"])
     qa = RetrievalQA.from_chain_type(
+        max_tokens_limit=1000, # Restrict the docs to return from store based on tokens, enforced only for StuffDocumentChain and if reduce_k_below_max_tokens is to true
+        reduce_k_below_max_tokens=True, # Reduce the number of results to return from store based on tokens limit
         llm=llm,
         retriever=retriever,
         return_source_documents=True,
