@@ -25,7 +25,9 @@ retriever:
 model: jphme/Llama-2-13b-chat-german
 # device: 0
 model_kwargs:
-  use_auth_token: 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
+  token: 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
+  # cache_dir: None
+  # use_cache: false
   # use_auth_token: ${AUTHTOKEN}
   #device_map: auto
   #load_in_4bit: true
@@ -37,6 +39,7 @@ model_kwargs:
   # bnb_4bit_use_double_quant: true
   #bnb_4bit_compute_dtype: bfloat16
 pipeline_kwargs:
+  token: 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
   max_new_tokens: 512
 
 # server configuration
@@ -47,6 +50,7 @@ auth: true
 # database configuration
 chroma:
   persist_directory: db
+  # persist_directory: db_straightlabs_daten
   # chroma_db_impl: duckdb+parquet
   anonymized_telemetry: false
   is_persistent: true
