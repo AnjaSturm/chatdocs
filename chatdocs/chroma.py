@@ -1,5 +1,6 @@
 import os
 import glob
+import re
 from typing import List
 from multiprocessing import Pool
 
@@ -123,7 +124,7 @@ def process_documents(
 
 
 
-# adds documents to collection
+# add documents to collection
 def add(source_directory: str, collection_name: str) -> None:
     collection = get_collection(collection_name)
     print("Count before add:", collection._client.get_collection(collection_name).count())
@@ -159,6 +160,21 @@ def delete(collection_name: str) -> None:
         for collection in updated_collections:
             print(collection.name)
             
+def get_collection_documents(collection_name: str) -> None:
+    documents = []
+    collection = get_collection(collection_name)
+    metadatas = collection.get(include=["metadatas"])
+    sources = [metadata["source"] for metadata in metadatas["metadatas"]]
+    for source in sources:
+        doc = re.search(r'([^\/]+)$', str(source)).group(1)
+        if doc not in documents:
+            documents.append(doc)
+
+    print("Collection", collection_name, "contains", len(documents), "documents")
+    print("documents:", documents)
+    
+    return documents
+            
 # delete single file from collection            
 def delete_file(collection_name: str, file_path: str) -> None:
     collection = get_collection(collection_name)
@@ -169,4 +185,22 @@ def delete_file(collection_name: str, file_path: str) -> None:
     print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection_name))
     if len(ids): collection.delete(ids)
     print("ids after delete of", file_path, ":", collection.get(where={"source": file_path})['ids'])
+
+# check if collection contains file   
+def does_collection_contains_file(collection_name: str, file_path: str) -> None:
+    collection = get_collection(collection_name)
+    ids = collection.get(where={"source": file_path})['ids']
+    file = re.search(r'([^\/]+)$', str(file_path)).group(1)
+    contains = False
+    
+    if not ids:
+        print("Collection", collection_name, "DOES NOT CONTAIN document", file)
+    else:
+        print("Collection", collection_name, "CONTAINS document", file)
+        contains = True
+    return contains
+
+    # print('REMOVE %s document(s) from %s collection' % (str(len(ids)), collection_name))
+    # if len(ids): collection.delete(ids)
+    # print("ids after delete of", file_path, ":", collection.get(where={"source": file_path})['ids'])
         

@@ -34,11 +34,10 @@ def add(
     ],
     config: ConfigPath = None,
 ):
-    from .add import add
+    from .chroma import add
     
-    config = get_config()
     company = re.search(r'([^\/]+)$', str(directory)).group(1)
-    add(config=config, source_directory=str(directory), collection_name=company)
+    add(source_directory=str(directory), collection_name=company)
 
 
 @app.command()
