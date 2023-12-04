@@ -13,11 +13,11 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
 from quart import Quart, request, session, jsonify, send_from_directory
-from quart_jwt_extended import JWTManager, jwt_required, get_jwt_identity
+from quart_jwt_extended import JWTManager, jwt_required
 from rich import print
 
 from .chains import get_retrieval_qa
-from .add import add, delete, delete_file
+from .chroma import add, delete, delete_file, does_collection_contains_file, get_collection_documents
 from .llms import get_llm
 from .vectorstores import get_collection
 
@@ -30,7 +30,7 @@ ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 def api(config: Dict[str, Any]) -> None:
     
-    # instantiate llm and qa
+    # instantiate llm
     llm = get_llm(config)    
         
     # app configuration    
@@ -139,7 +139,21 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
             context["qa"] = get_retrieval_qa(config, llm, get_collection(company))
                 
         print("Session data for current request: " + str(context)) 
+         
+    # set temperature, max_tokens, prompt
+    @app.route("/superUser", methods=["GET"])
+    @jwt_required
+    async def superUser():
         
+        context = get_session_context(session.get('session_id'))
+        if not context:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+        
+        if not context["admin"]:
+            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
+        
+        return jsonify({"message": "Authorized, only allowed for admin"}), 200
         
     @app.route("/login", methods=["POST"])
     @jwt_required
@@ -151,19 +165,22 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     @app.route("/logout", methods=["POST"])
     @jwt_required
     async def logout():
-        if 'session_id' in session:
-            get_session_context(session['session_id']).clear()
+        session_id = session.get('session_id')
+        if session_id is None:
+            return jsonify({"message": "Session ID not found in the session data"})
+        
+        get_session_context(session_id).clear()
         session.clear()
         return jsonify({"message": "logged out successfully"}), 200
     
     
-    @app.route("/query", methods=["POST", "GET"])
+    @app.route("/query", methods=["POST"])
     @jwt_required
     async def query():
-        context = get_session_context(session['session_id'])
-        if len(context) == 0:
+        
+        context = get_session_context(session.get('session_id'))
+        if not context:
             session.clear()
-            print("Session expired, please login again")
             return jsonify({"message": "Session expired, please login again"}), 401
         
         req = await request.form
@@ -180,12 +197,74 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
         return json.dumps(res)
     
     
+    @app.route("/vectorstore", methods=["POST", "DELETE", "GET"])
+    @jwt_required
+    async def vectorstore():
+        
+        context = get_session_context(session.get('session_id'))
+        if not context:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
+            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
+
+        company_name = context["company"]   
+        company_directory = DOCUMENT_DIRECTORY / company_name
+        
+        if request.method == "POST":  
+            add(source_directory=str(company_directory), collection_name=company_name)
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
+            return jsonify({"message": f"added files to collection {str(company_name)} successfully"}), 200
+    
+        elif request.method == "DELETE":
+            delete(collection_name=company_name)
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
+            return jsonify({"message": f"deleted collection {str(company_name)} successfully"}), 200
+        
+        # for testing
+        elif request.method == "GET":
+            documents = get_collection_documents(collection_name=company_name)
+            return jsonify({"message": f"collection {str(company_name)} contains {len(documents)} document(s): {documents}"}), 200
+            
+     
+    @app.route("/vectorstore/<filename>", methods=["DELETE", "GET"])
+    @jwt_required
+    async def vectorstore_file(filename):
+        
+        context = get_session_context(session.get('session_id'))
+        if not context:
+            session.clear()
+            return jsonify({"message": "Session expired, please login again"}), 401
+
+        if not context["admin"]:
+            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
+
+        company_name = context["company"]   
+        file_directory = DOCUMENT_DIRECTORY / company_name / filename
+        
+        if request.method == "DELETE":
+            delete_file(company_name, str(file_directory))
+            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
+            return jsonify({"message": f"deleted file {str(filename)} from collection {str(company_name)} successfully"}), 200
+    
+        # for testing
+        if request.method == "GET":
+            if does_collection_contains_file(company_name, str(file_directory)):
+                return jsonify({"message": f"Collection {str(company_name)} does contain document {str(filename)}"}), 200
+            else:
+                return jsonify({"message": f"Collection {str(company_name)} does not contain document {str(filename)}"}), 404
+            
+            
+    
+    
     # TODO: use str8labs media server in future?
     @app.route("/files", methods=["GET", "POST", "DELETE"])
     @jwt_required
-    async def manage_files():
-        context = get_session_context(session['session_id'])
-        if len(context) == 0:
+    async def files():
+        
+        context = get_session_context(session.get('session_id'))
+        if not context:
             session.clear()
             return jsonify({"message": "Session expired, please login again"}), 401
 
@@ -243,9 +322,9 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
     # TODO: use str8labs media server
     @app.route('/files/<filename>', methods=["GET", "DELETE"])
     @jwt_required
-    async def manage_file(filename):
-        context = get_session_context(session['session_id'])
-        if len(context) == 0:
+    async def file(filename):
+        context = get_session_context(session.get('session_id'))
+        if not context:
             session.clear()
             return jsonify({"message": "Session expired, please login again"}), 401
 
@@ -261,7 +340,7 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
             
         elif request.method == "DELETE":
             if not company_directory.is_dir():
-                return "directory not found", 404
+                return jsonify({"message": "directory not found"}), 404
             file_directory = company_directory / secure_filename(filename)
             if file_directory.is_file():
                 file_directory.unlink()
@@ -269,48 +348,6 @@ UijGy2974VspHY+XrggzbKT2wzo8GNiFx16vuZdPNyXrZxUkqKjNZxpXvpJQ5YW6
             return jsonify({"message": f"File {str(filename)} not found"}), 404
         
 
-    @app.route("/vectorstore", methods=["POST", "DELETE"])
-    @jwt_required
-    async def vectorstore():
-        context = get_session_context(session['session_id'])
-        if len(context) == 0:
-            session.clear()
-            return jsonify({"message": "Session expired, please login again"}), 401
-
-        if not context["admin"]:
-            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-
-        company_name = context["company"]   
-        company_directory = DOCUMENT_DIRECTORY / company_name
-        
-        if request.method == "POST":  
-            add(source_directory=str(company_directory), collection_name=company_name)
-            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
-            return jsonify({"message": f"added files to collection {str(company_name)} successfully"}), 200
-    
-        elif request.method == "DELETE":
-            delete(collection_name=company_name)
-            context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
-            return jsonify({"message": f"deleted collection {str(company_name)} successfully"}), 200
-            
-     
-    @app.route("/vectorstore/<filename>", methods=["DELETE"])
-    @jwt_required
-    async def delete_file_from_collection(filename):
-        context = get_session_context(session['session_id'])
-        if len(context) == 0:
-            session.clear()
-            return jsonify({"message": "Session expired, please login again"}), 401
-
-        if not context["admin"]:
-            return jsonify({"message": "Unauthorized, only allowed for admin"}), 401
-
-        company_name = context["company"]   
-        company_directory = DOCUMENT_DIRECTORY / company_name / filename
-        delete_file(company_name, str(company_directory))
-        context["qa"] = get_retrieval_qa(config, llm, get_collection(company_name))
-        return jsonify({"message": f"deleted file {str(filename)} from collection {str(company_name)} successfully"}), 200
-            
 
     host, port = config["host"], config["port"]
     app.run(host=host, port=port, use_reloader=False, debug=True)
